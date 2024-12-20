@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
@@ -13,7 +14,17 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		return true
+		origin := r.Header.Get("Origin")
+		allowed_origins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
+
+		for _, allowed_origin := range allowed_origins {
+			if origin == allowed_origin {
+				return true
+			}
+		}
+
+		fmt.Printf("Origin %s NOT allowed\n", origin)
+		return false
 	},
 }
 
