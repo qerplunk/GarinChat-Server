@@ -39,27 +39,13 @@ func handleConnection(conn *websocket.Conn) {
 			// Handle user closing browser and terminating WebSocket connection
 			// Handles "userleave" messages
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
-				fmt.Println("User has left/closed the room")
-				if _, exists := room_manager.Rooms[currentRoom]; exists {
-					if users_left := room_manager.RemoveConnection(currentRoom, conn); users_left {
-						fmt.Println("\tBroadcasting USERLEAVE to all...")
-						data_to_send := map[string]interface{}{
-							"type":       "userleave",
-							"user":       currentName,
-							"totalUsers": len(room_manager.Rooms[currentRoom]),
-						}
-
-						json_data, err := json.Marshal(data_to_send)
-						if err != nil {
-							fmt.Println("JSON Marhsall error:", err)
-							return
-						}
-						for otherConn := range room_manager.Rooms[currentRoom] {
-							otherConn.WriteMessage(websocket.TextMessage, json_data)
-						}
+				if users_left := room_manager.RemoveConnection(currentRoom, conn); users_left {
+					data_to_send := map[string]interface{}{
+						"type":       "userleave",
+						"user":       currentName,
+						"totalUsers": len(room_manager.Rooms[currentRoom]),
 					}
-				} else {
-					fmt.Printf("Room %s not exist", currentRoom)
+					room_manager.SendMessageToAll(currentRoom, data_to_send)
 				}
 			} else {
 				fmt.Println("Error reading message:", err)
@@ -83,26 +69,14 @@ func handleConnection(conn *websocket.Conn) {
 				continue
 			}
 
-			room_manager.AddConnection(currentRoom, conn)
-
-			roomConns := room_manager.Rooms[currentRoom]
-
-			fmt.Printf("\t'%s' has joined room '%s'\n", currentName, currentRoom)
+			room_manager.AddConnectionToRoom(currentRoom, conn)
 
 			data_to_send := map[string]interface{}{
 				"type":       "newuser",
 				"user":       currentName,
 				"totalUsers": len(room_manager.Rooms[currentRoom]),
 			}
-
-			json_data, err := json.Marshal(data_to_send)
-			if err != nil {
-				fmt.Println("JSON Marhsall error:", err)
-				return
-			}
-			for otherConn := range roomConns {
-				otherConn.WriteMessage(websocket.TextMessage, json_data)
-			}
+			room_manager.SendMessageToAll(currentRoom, data_to_send)
 		case "userleave":
 			fmt.Println("USERLEAVE:", currentName)
 			break
@@ -111,25 +85,12 @@ func handleConnection(conn *websocket.Conn) {
 			fmt.Println("MESSAGE")
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
 
-			roomConns := room_manager.Rooms[currentRoom]
-
 			data_to_send := map[string]interface{}{
 				"type":    "message",
 				"user":    currentName,
 				"message": msg.Message,
 			}
-
-			json_data, err := json.Marshal(data_to_send)
-			if err != nil {
-				fmt.Println("JSON Marhsall error:", err)
-				return
-			}
-			for otherConn := range roomConns {
-				if otherConn == conn {
-					continue
-				}
-				otherConn.WriteMessage(websocket.TextMessage, json_data)
-			}
+			room_manager.SendMessageToAllExceptSelf(conn, currentRoom, data_to_send)
 		}
 	}
 
