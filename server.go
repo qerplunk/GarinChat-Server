@@ -128,7 +128,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sb_secret := os.Getenv("SUPABASE_SECRET")
+	sb_secret := os.Getenv("SUPABASE_JWT_SECRET")
 	if sb_secret == "" {
 		fmt.Println("No supabase secret")
 		return
@@ -166,8 +166,14 @@ func main() {
 
 	http.HandleFunc("/", handleWebSocket)
 
-	fmt.Println("WebSocket server running on ws://localhost:8080/")
-	err := http.ListenAndServe(":8080", nil)
+	port := os.Getenv("PORT")
+	if port == "" {
+		fmt.Println("No port selected")
+		return
+	}
+
+	fmt.Printf("WebSocket server running on ws://localhost:%s/\n", port)
+	err := http.ListenAndServe(":"+port, nil)
 	if goDotEnv_err != nil {
 		fmt.Println("Error starting server:", err)
 	}
