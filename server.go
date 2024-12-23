@@ -8,7 +8,6 @@ import (
 	"qerplunk/garin-chat/middleware"
 
 	"github.com/gorilla/websocket"
-	"github.com/joho/godotenv"
 )
 
 // Upgrades HTTP connection to WebSocket connection
@@ -131,10 +130,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	if goDotEnvErr := godotenv.Load(); goDotEnvErr != nil {
-		fmt.Println("Error loading .env file")
-	}
-
 	middlewareStack := middleware.CreateStack(
 		middleware.JWTCheck(),
 		middleware.OriginCheck(),
