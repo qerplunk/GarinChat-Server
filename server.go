@@ -35,6 +35,16 @@ type Message struct {
 	Room     string `json:"room,omitempty"`
 }
 
+// Type of WebSocket server messages
+// WS_JOIN: new user joins a room
+// WS_USERLEAVE: user leaves a room
+// WS_MESSAGE: user sends a message to a room
+const (
+	WS_JOIN      = "join"
+	WS_USERLEAVE = "userleave"
+	WS_MESSAGE   = "message"
+)
+
 var room_manager *RoomManager = NewRoomManager()
 
 func handleConnection(conn *websocket.Conn) {
@@ -52,7 +62,7 @@ func handleConnection(conn *websocket.Conn) {
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
 				if users_left := room_manager.RemoveConnection(currentRoom, conn); users_left {
 					data_to_send := map[string]interface{}{
-						"type":       "userleave",
+						"type":       WS_USERLEAVE,
 						"user":       currentName,
 						"totalUsers": len(room_manager.Rooms[currentRoom]),
 					}
@@ -70,7 +80,7 @@ func handleConnection(conn *websocket.Conn) {
 			continue
 		}
 		switch msg.Type {
-		case "join":
+		case WS_JOIN:
 			currentName = msg.Username
 			currentRoom = msg.Room
 			fmt.Println("JOIN:", currentName, currentRoom)
@@ -83,21 +93,21 @@ func handleConnection(conn *websocket.Conn) {
 			room_manager.AddConnectionToRoom(currentRoom, conn)
 
 			data_to_send := map[string]interface{}{
-				"type":       "newuser",
+				"type":       WS_JOIN,
 				"user":       currentName,
 				"totalUsers": len(room_manager.Rooms[currentRoom]),
 			}
 			room_manager.SendMessageToAll(currentRoom, data_to_send)
-		case "userleave":
+		case WS_USERLEAVE:
 			fmt.Println("USERLEAVE:", currentName)
 			break
 
-		case "message":
+		case WS_MESSAGE:
 			fmt.Println("MESSAGE")
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
 
 			data_to_send := map[string]interface{}{
-				"type":    "message",
+				"type":    WS_MESSAGE,
 				"user":    currentName,
 				"message": msg.Message,
 			}
