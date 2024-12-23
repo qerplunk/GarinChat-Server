@@ -12,6 +12,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// Upgrades HTTP connection to WebSocket connection
+// Requires the origin URL to be one of the specified from the env file in ALLOWED_ORIGINS
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
@@ -28,6 +30,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// Message type used for unmarshalling WebSocket message into a variable
 type Message struct {
 	Type     string `json:"type"`
 	Message  string `json:"message,omitempty"`
@@ -45,11 +48,14 @@ const (
 	WS_MESSAGE   = "message"
 )
 
+// Room manager used to store and map room names to WebSocket connections
 var room_manager *RoomManager = NewRoomManager()
 
+// Handles a WebSocket connection instance
 func handleConnection(conn *websocket.Conn) {
 	defer conn.Close()
 
+	// The currentName and currentRoom variables are set once a user joins a room
 	var currentName string
 	var currentRoom string
 
@@ -79,6 +85,8 @@ func handleConnection(conn *websocket.Conn) {
 			fmt.Println("Error unmarshalling message:", err)
 			continue
 		}
+
+		// Checks the type of message the user sent to the server
 		switch msg.Type {
 		case WS_JOIN:
 			currentName = msg.Username
@@ -98,6 +106,7 @@ func handleConnection(conn *websocket.Conn) {
 				"totalUsers": len(room_manager.Rooms[currentRoom]),
 			}
 			room_manager.SendMessageToAll(currentRoom, data_to_send)
+
 		case WS_USERLEAVE:
 			fmt.Println("USERLEAVE:", currentName)
 			break
@@ -115,10 +124,7 @@ func handleConnection(conn *websocket.Conn) {
 		}
 	}
 
-	fmt.Println("Client connected")
 	fmt.Println("End of WebSocket session")
-
-	// todo: clean up leftover users and rooms
 }
 
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -148,6 +154,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+// The basic HTTP connection, not WebSocket yet
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, conn_err := upgrader.Upgrade(w, r, nil)
 
 	if conn_err != nil {
