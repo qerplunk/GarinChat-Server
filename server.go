@@ -131,8 +131,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	goDotEnvErr := godotenv.Load()
-	if goDotEnvErr != nil {
+	if goDotEnvErr := godotenv.Load(); goDotEnvErr != nil {
 		fmt.Println("Error loading .env file")
 	}
 
@@ -150,8 +149,7 @@ func main() {
 	}
 
 	fmt.Printf("WebSocket server running on ws://localhost:%s/\n", port)
-	err := http.ListenAndServe(":"+port, nil)
-	if goDotEnvErr != nil {
-		fmt.Println("Error starting server:", err)
+	if serveErr := http.ListenAndServe(":"+port, nil); serveErr != nil {
+		fmt.Println("Error starting server:", serveErr)
 	}
 }
