@@ -5,28 +5,17 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
+	"qerplunk/garin-chat/middleware"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
 // Upgrades HTTP connection to WebSocket connection
-// Requires the origin URL to be one of the specified from the env file in ALLOWED_ORIGINS
+// Returns true as a middleware is already used to check for the origin
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		allowed_origins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
-
-		for _, allowed_origin := range allowed_origins {
-			if origin == allowed_origin {
-				return true
-			}
-		}
-
-		fmt.Printf("Origin %s NOT allowed\n", origin)
-		return false
+		return true
 	},
 }
 
@@ -127,33 +116,6 @@ func handleConnection(conn *websocket.Conn) {
 	fmt.Println("End of WebSocket session")
 }
 
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	token_str := r.URL.Query().Get("token")
-	if token_str == "" {
-		fmt.Println("No Authorization token")
-		return
-	}
-
-	sb_secret := os.Getenv("SUPABASE_JWT_SECRET")
-	if sb_secret == "" {
-		fmt.Println("No supabase secret")
-		return
-	}
-
-	tok, jwt_err := jwt.Parse(token_str, func(token *jwt.Token) (interface{}, error) {
-		return []byte(sb_secret), nil
-	})
-
-	if jwt_err != nil {
-		fmt.Println("Error trying to parse JWT:", jwt_err)
-		return
-	}
-
-	if !tok.Valid {
-		fmt.Println("Invalid token")
-		return
-	}
-
 // The basic HTTP connection, not WebSocket yet
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, conn_err := upgrader.Upgrade(w, r, nil)
@@ -172,7 +134,12 @@ func main() {
 		fmt.Println("Error loading .env file")
 	}
 
-	http.HandleFunc("/", handleWebSocket)
+	middlewareStack := middleware.CreateStack(
+		middleware.JWTCheck(),
+		middleware.OriginCheck(),
+	)
+
+	http.HandleFunc("/", middlewareStack(handleWebSocket))
 
 	port := os.Getenv("PORT")
 	if port == "" {
