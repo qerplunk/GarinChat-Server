@@ -19,68 +19,68 @@ func NewRoomManager() *RoomManager {
 	}
 }
 
-func (rm *RoomManager) AddConnectionToRoom(room string, conn *websocket.Conn) {
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
+func (roomManager *RoomManager) AddConnectionToRoom(room string, conn *websocket.Conn) {
+	roomManager.mu.Lock()
+	defer roomManager.mu.Unlock()
 
-	if _, exists := rm.Rooms[room]; !exists {
-		rm.Rooms[room] = make(map[*websocket.Conn]bool)
+	if _, exists := roomManager.Rooms[room]; !exists {
+		roomManager.Rooms[room] = make(map[*websocket.Conn]bool)
 	}
 
-	rm.Rooms[room][conn] = true
+	roomManager.Rooms[room][conn] = true
 }
 
-func (rm *RoomManager) RemoveConnection(room string, conn *websocket.Conn) bool {
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
+func (roomManager *RoomManager) RemoveConnection(room string, conn *websocket.Conn) bool {
+	roomManager.mu.Lock()
+	defer roomManager.mu.Unlock()
 
-	users_left := true
+	usersLeft := true
 
-	if conns, exists := rm.Rooms[room]; exists {
+	if conns, exists := roomManager.Rooms[room]; exists {
 		delete(conns, conn)
 
 		if len(conns) == 0 {
-			delete(rm.Rooms, room)
+			delete(roomManager.Rooms, room)
 			fmt.Printf("Room '%s' is empty, closing...\n", room)
-			users_left = false
+			usersLeft = false
 		} 
 	}
-	return users_left
+	return usersLeft
 }
 
-func (room_manager *RoomManager) SendMessageToAll(room_name string, data map[string]interface{}) {
-	if _, exists := room_manager.Rooms[room_name]; !exists {
-		fmt.Printf("Room '%s' does not exist\n", room_name)
+func (roomManager *RoomManager) SendMessageToAll(roomName string, data map[string]interface{}) {
+	if _, exists := roomManager.Rooms[roomName]; !exists {
+		fmt.Printf("Room '%s' does not exist\n", roomName)
 		return
 	}
 
-	json_data, json_err := json.Marshal(data)
+	jsonData, jsonErr := json.Marshal(data)
 
-	if json_err != nil {
-		fmt.Println("Error Marshalling data:", json_err)
+	if jsonErr != nil {
+		fmt.Println("Error Marshalling data:", jsonErr)
 		return
 	}
-	for conn := range room_manager.Rooms[room_name] {
-		conn.WriteMessage(websocket.TextMessage, json_data)
+	for conn := range roomManager.Rooms[roomName] {
+		conn.WriteMessage(websocket.TextMessage, jsonData)
 	}
 }
 
-func (room_manager *RoomManager) SendMessageToAllExceptSelf(self *websocket.Conn, room_name string, data map[string]interface{}) {
-	if _, exists := room_manager.Rooms[room_name]; !exists {
-		fmt.Printf("Room '%s' does not exist\n", room_name)
+func (roomManager *RoomManager) SendMessageToAllExceptSelf(self *websocket.Conn, roomName string, data map[string]interface{}) {
+	if _, exists := roomManager.Rooms[roomName]; !exists {
+		fmt.Printf("Room '%s' does not exist\n", roomName)
 		return
 	}
 
-	json_data, json_err := json.Marshal(data)
+	jsonData, jsonErr := json.Marshal(data)
 
-	if json_err != nil {
-		fmt.Println("Error Marshalling data:", json_err)
+	if jsonErr != nil {
+		fmt.Println("Error Marshalling data:", jsonErr)
 		return
 	}
-	for conn := range room_manager.Rooms[room_name] {
+	for conn := range roomManager.Rooms[roomName] {
 		if conn == self {
 			continue
 		}
-		conn.WriteMessage(websocket.TextMessage, json_data)
+		conn.WriteMessage(websocket.TextMessage, jsonData)
 	}
 }

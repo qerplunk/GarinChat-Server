@@ -27,18 +27,20 @@ type Message struct {
 	Room     string `json:"room,omitempty"`
 }
 
-// Type of WebSocket server messages
-// WS_JOIN: new user joins a room
-// WS_USERLEAVE: user leaves a room
-// WS_MESSAGE: user sends a message to a room
+/*
+Type of WebSocket server messages.
+WsJoin: new user joins a room
+WsUserLeave: user leaves a room
+WsMessage: user sends a message to a room
+*/
 const (
-	WS_JOIN      = "join"
-	WS_USERLEAVE = "userleave"
-	WS_MESSAGE   = "message"
+	WsJoin      = "join"
+	WsUserLeave = "userleave"
+	WsMessage   = "message"
 )
 
 // Room manager used to store and map room names to WebSocket connections
-var room_manager *RoomManager = NewRoomManager()
+var roomManager *RoomManager = NewRoomManager()
 
 // Handles a WebSocket connection instance
 func handleConnection(conn *websocket.Conn) {
@@ -55,13 +57,13 @@ func handleConnection(conn *websocket.Conn) {
 			// Handle user closing browser and terminating WebSocket connection
 			// Handles "userleave" messages
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
-				if users_left := room_manager.RemoveConnection(currentRoom, conn); users_left {
-					data_to_send := map[string]interface{}{
-						"type":       WS_USERLEAVE,
+				if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
+					dataToSend := map[string]interface{}{
+						"type":       WsUserLeave,
 						"user":       currentName,
-						"totalUsers": len(room_manager.Rooms[currentRoom]),
+						"totalUsers": len(roomManager.Rooms[currentRoom]),
 					}
-					room_manager.SendMessageToAll(currentRoom, data_to_send)
+					roomManager.SendMessageToAll(currentRoom, dataToSend)
 				}
 			} else {
 				fmt.Println("Error reading message:", err)
@@ -77,7 +79,7 @@ func handleConnection(conn *websocket.Conn) {
 
 		// Checks the type of message the user sent to the server
 		switch msg.Type {
-		case WS_JOIN:
+		case WsJoin:
 			currentName = msg.Username
 			currentRoom = msg.Room
 			fmt.Println("JOIN:", currentName, currentRoom)
@@ -87,29 +89,29 @@ func handleConnection(conn *websocket.Conn) {
 				continue
 			}
 
-			room_manager.AddConnectionToRoom(currentRoom, conn)
+			roomManager.AddConnectionToRoom(currentRoom, conn)
 
-			data_to_send := map[string]interface{}{
-				"type":       WS_JOIN,
+			dataToSend := map[string]interface{}{
+				"type":       WsJoin,
 				"user":       currentName,
-				"totalUsers": len(room_manager.Rooms[currentRoom]),
+				"totalUsers": len(roomManager.Rooms[currentRoom]),
 			}
-			room_manager.SendMessageToAll(currentRoom, data_to_send)
+			roomManager.SendMessageToAll(currentRoom, dataToSend)
 
-		case WS_USERLEAVE:
+		case WsUserLeave:
 			fmt.Println("USERLEAVE:", currentName)
 			break
 
-		case WS_MESSAGE:
+		case WsMessage:
 			fmt.Println("MESSAGE")
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
 
-			data_to_send := map[string]interface{}{
-				"type":    WS_MESSAGE,
+			dataToSend := map[string]interface{}{
+				"type":    WsMessage,
 				"user":    currentName,
 				"message": msg.Message,
 			}
-			room_manager.SendMessageToAllExceptSelf(conn, currentRoom, data_to_send)
+			roomManager.SendMessageToAllExceptSelf(conn, currentRoom, dataToSend)
 		}
 	}
 
@@ -118,10 +120,10 @@ func handleConnection(conn *websocket.Conn) {
 
 // The basic HTTP connection, not WebSocket yet
 func handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	conn, conn_err := upgrader.Upgrade(w, r, nil)
+	conn, connErr := upgrader.Upgrade(w, r, nil)
 
-	if conn_err != nil {
-		fmt.Println("Error upgrading connection:", conn_err)
+	if connErr != nil {
+		fmt.Println("Error upgrading connection:", connErr)
 		return
 	}
 
@@ -129,8 +131,8 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	goDotEnv_err := godotenv.Load()
-	if goDotEnv_err != nil {
+	goDotEnvErr := godotenv.Load()
+	if goDotEnvErr != nil {
 		fmt.Println("Error loading .env file")
 	}
 
@@ -149,7 +151,7 @@ func main() {
 
 	fmt.Printf("WebSocket server running on ws://localhost:%s/\n", port)
 	err := http.ListenAndServe(":"+port, nil)
-	if goDotEnv_err != nil {
+	if goDotEnvErr != nil {
 		fmt.Println("Error starting server:", err)
 	}
 }
