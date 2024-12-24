@@ -128,7 +128,17 @@ func handleConnection(conn *websocket.Conn) {
 		var msg Message
 		if err := json.Unmarshal(message, &msg); err != nil {
 			fmt.Println("Error unmarshalling message:", err)
-			continue
+
+			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
+				dataToSend := map[string]interface{}{
+					"type":       WsUserLeave,
+					"user":       currentName,
+					"totalUsers": len(roomManager.Rooms[currentRoom]),
+				}
+				roomManager.SendMessageToAll(currentRoom, dataToSend)
+			}
+
+			break
 		}
 
 		// Checks the type of message the user sent to the server
@@ -140,7 +150,7 @@ func handleConnection(conn *websocket.Conn) {
 
 			if currentName == "" || currentRoom == "" {
 				fmt.Println("Empty values")
-				continue
+				break
 			}
 
 			roomManager.AddConnectionToRoom(currentRoom, conn)
