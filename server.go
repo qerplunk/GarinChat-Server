@@ -146,12 +146,12 @@ func handleConnection(conn *websocket.Conn) {
 		case WsJoin:
 			currentName = msg.Username
 			currentRoom = msg.Room
-			fmt.Println("JOIN:", currentName, currentRoom)
-
-			if currentName == "" || currentRoom == "" {
-				fmt.Println("Empty values")
+			if len(currentName) < 3 || len(currentRoom) < 3 {
+				fmt.Println("Name and room have to be length >= 3")
 				return
 			}
+
+			fmt.Println("JOIN:", currentName, currentRoom)
 
 			roomManager.AddConnectionToRoom(currentRoom, conn)
 
@@ -168,6 +168,12 @@ func handleConnection(conn *websocket.Conn) {
 
 		case WsMessage:
 			fmt.Println("MESSAGE")
+
+			if len(msg.Message) == 0 {
+				fmt.Println("No message")
+				return
+			}
+
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
 
 			dataToSend := map[string]interface{}{
