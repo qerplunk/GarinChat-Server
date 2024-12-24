@@ -150,7 +150,7 @@ func handleConnection(conn *websocket.Conn) {
 
 			if currentName == "" || currentRoom == "" {
 				fmt.Println("Empty values")
-				break
+				return
 			}
 
 			roomManager.AddConnectionToRoom(currentRoom, conn)
@@ -176,6 +176,10 @@ func handleConnection(conn *websocket.Conn) {
 				"message": msg.Message,
 			}
 			roomManager.SendMessageToAllExceptSelf(conn, currentRoom, dataToSend)
+
+		default:
+			fmt.Printf("Unknown message type (%s), closing connection\n", msg)
+			return
 		}
 	}
 
