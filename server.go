@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"qerplunk/garin-chat/middleware"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -41,6 +42,40 @@ const (
 // Room manager used to store and map room names to WebSocket connections
 var roomManager *RoomManager = NewRoomManager()
 
+// The frontend will hard limit users sending messages to once every 2.5 seconds
+// But due to network timings the server limits to 1 message/second to avoid kicking good users out
+const (
+	maxMessagesPerSecond = 1
+	slidingWindowSeconds = 1
+)
+
+type rateLimiter struct {
+	// Track the number of messages received in the current time window
+	messageCount int
+	// Store the timestamp of the last time the counter 'messageCount' was reset
+	// Defines the start of the current time window
+	lastReset time.Time
+}
+
+// Returns if the user is under the rate limit and allowed to send messages to the server
+func (rl *rateLimiter) allowMessage() bool {
+	now := time.Now()
+
+	// Reset rate limiter every slidingWindowSeconds
+	if now.Sub(rl.lastReset) > slidingWindowSeconds*time.Second {
+		rl.messageCount = 0
+		rl.lastReset = now
+	}
+
+	if rl.messageCount >= maxMessagesPerSecond {
+		return false
+	}
+
+	// User did not go over rate limit
+	rl.messageCount += 1
+	return true
+}
+
 // Handles a WebSocket connection instance
 func handleConnection(conn *websocket.Conn) {
 	defer conn.Close()
@@ -48,6 +83,10 @@ func handleConnection(conn *websocket.Conn) {
 	// The currentName and currentRoom variables are set once a user joins a room
 	var currentName string
 	var currentRoom string
+
+	rateLimiter := rateLimiter{
+		lastReset: time.Now(),
+	}
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -67,6 +106,22 @@ func handleConnection(conn *websocket.Conn) {
 			} else {
 				fmt.Println("Error reading message:", err)
 			}
+			break
+		}
+
+		// Update rate limiter here to also limit invalid messages getting received
+		if !rateLimiter.allowMessage() {
+			fmt.Println("Rate limit exceeded, closing connection")
+
+			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
+				dataToSend := map[string]interface{}{
+					"type":       WsUserLeave,
+					"user":       currentName,
+					"totalUsers": len(roomManager.Rooms[currentRoom]),
+				}
+				roomManager.SendMessageToAll(currentRoom, dataToSend)
+			}
+
 			break
 		}
 
