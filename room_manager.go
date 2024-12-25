@@ -19,6 +19,10 @@ func NewRoomManager() *RoomManager {
 	}
 }
 
+/*
+Adds a connection to a room.
+Creates a new map if the room does not exist.
+*/
 func (roomManager *RoomManager) AddConnectionToRoom(room string, conn *websocket.Conn) {
 	roomManager.mu.Lock()
 	defer roomManager.mu.Unlock()
@@ -30,6 +34,11 @@ func (roomManager *RoomManager) AddConnectionToRoom(room string, conn *websocket
 	roomManager.Rooms[room][conn] = true
 }
 
+/*
+Removes a connection from a room.
+If there are no more users left in the room, it deletes the map entry and returns false for no more users left.
+Otherwise, it returns true since there are users left in the room.
+*/
 func (roomManager *RoomManager) RemoveConnection(room string, conn *websocket.Conn) bool {
 	roomManager.mu.Lock()
 	defer roomManager.mu.Unlock()
@@ -43,12 +52,15 @@ func (roomManager *RoomManager) RemoveConnection(room string, conn *websocket.Co
 			delete(roomManager.Rooms, room)
 			fmt.Printf("Room '%s' is empty, closing...\n", room)
 			usersLeft = false
-		} 
+		}
 	}
 	return usersLeft
 }
 
-func (roomManager *RoomManager) SendMessageToAll(roomName string, data map[string]interface{}) {
+/*
+Sends a message to all users within the room.
+*/
+func (roomManager *RoomManager) SendMessageToAll(roomName string, data Message) {
 	if _, exists := roomManager.Rooms[roomName]; !exists {
 		fmt.Printf("Room '%s' does not exist\n", roomName)
 		return
@@ -65,7 +77,10 @@ func (roomManager *RoomManager) SendMessageToAll(roomName string, data map[strin
 	}
 }
 
-func (roomManager *RoomManager) SendMessageToAllExceptSelf(self *websocket.Conn, roomName string, data map[string]interface{}) {
+/*
+Sends a message to all users (except the sender) within the room.
+*/
+func (roomManager *RoomManager) SendMessageToAllExceptSelf(self *websocket.Conn, roomName string, data Message) {
 	if _, exists := roomManager.Rooms[roomName]; !exists {
 		fmt.Printf("Room '%s' does not exist\n", roomName)
 		return

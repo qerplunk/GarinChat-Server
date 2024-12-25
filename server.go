@@ -21,10 +21,11 @@ var upgrader = websocket.Upgrader{
 
 // Message type used for unmarshalling WebSocket message into a variable
 type Message struct {
-	Type     string `json:"type"`
-	Message  string `json:"message,omitempty"`
-	Username string `json:"username,omitempty"`
-	Room     string `json:"room,omitempty"`
+	Type       string `json:"type"`
+	Message    string `json:"message,omitempty"`
+	Username   string `json:"username,omitempty"`
+	Room       string `json:"room,omitempty"`
+	TotalUsers int    `json:"totalUsers,omitempty"`
 }
 
 /*
@@ -96,10 +97,10 @@ func handleConnection(conn *websocket.Conn) {
 			// Handles "userleave" messages
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
 				if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
-					dataToSend := map[string]interface{}{
-						"type":       WsUserLeave,
-						"user":       currentName,
-						"totalUsers": len(roomManager.Rooms[currentRoom]),
+					dataToSend := Message{
+						Type:       WsUserLeave,
+						Username:   currentName,
+						TotalUsers: len(roomManager.Rooms[currentRoom]),
 					}
 					roomManager.SendMessageToAll(currentRoom, dataToSend)
 				}
@@ -114,10 +115,10 @@ func handleConnection(conn *websocket.Conn) {
 			fmt.Println("Rate limit exceeded, closing connection")
 
 			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
-				dataToSend := map[string]interface{}{
-					"type":       WsUserLeave,
-					"user":       currentName,
-					"totalUsers": len(roomManager.Rooms[currentRoom]),
+				dataToSend := Message{
+					Type:       WsUserLeave,
+					Username:   currentName,
+					TotalUsers: len(roomManager.Rooms[currentRoom]),
 				}
 				roomManager.SendMessageToAll(currentRoom, dataToSend)
 			}
@@ -130,10 +131,10 @@ func handleConnection(conn *websocket.Conn) {
 			fmt.Println("Error unmarshalling message:", err)
 
 			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
-				dataToSend := map[string]interface{}{
-					"type":       WsUserLeave,
-					"user":       currentName,
-					"totalUsers": len(roomManager.Rooms[currentRoom]),
+				dataToSend := Message{
+					Type:       WsUserLeave,
+					Username:   currentName,
+					TotalUsers: len(roomManager.Rooms[currentRoom]),
 				}
 				roomManager.SendMessageToAll(currentRoom, dataToSend)
 			}
@@ -155,10 +156,10 @@ func handleConnection(conn *websocket.Conn) {
 
 			roomManager.AddConnectionToRoom(currentRoom, conn)
 
-			dataToSend := map[string]interface{}{
-				"type":       WsJoin,
-				"user":       currentName,
-				"totalUsers": len(roomManager.Rooms[currentRoom]),
+			dataToSend := Message{
+				Type:       WsJoin,
+				Username:   currentName,
+				TotalUsers: len(roomManager.Rooms[currentRoom]),
 			}
 			roomManager.SendMessageToAll(currentRoom, dataToSend)
 
@@ -176,15 +177,15 @@ func handleConnection(conn *websocket.Conn) {
 
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
 
-			dataToSend := map[string]interface{}{
-				"type":    WsMessage,
-				"user":    currentName,
-				"message": msg.Message,
+			dataToSend := Message{
+				Type:    WsMessage,
+				Username:    currentName,
+				Message: msg.Message,
 			}
 			roomManager.SendMessageToAllExceptSelf(conn, currentRoom, dataToSend)
 
 		default:
-			fmt.Printf("Unknown message type (%s), closing connection\n", msg)
+			fmt.Printf("Unknown message type (%#v), closing connection\n", msg)
 			return
 		}
 	}
