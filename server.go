@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
+	"qerplunk/garin-chat/config"
 	"qerplunk/garin-chat/middleware"
 	"time"
 
@@ -178,9 +178,9 @@ func handleConnection(conn *websocket.Conn) {
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
 
 			dataToSend := Message{
-				Type:    WsMessage,
-				Username:    currentName,
-				Message: msg.Message,
+				Type:     WsMessage,
+				Username: currentName,
+				Message:  msg.Message,
 			}
 			roomManager.SendMessageToAllExceptSelf(conn, currentRoom, dataToSend)
 
@@ -206,6 +206,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	if envConfig := config.InitEnvConfig(); !envConfig {
+		return
+	}
+
 	middlewareStack := middleware.CreateStack(
 		middleware.JWTCheck(),
 		middleware.OriginCheck(),
@@ -213,11 +217,7 @@ func main() {
 
 	http.HandleFunc("/", middlewareStack(handleWebSocket))
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		fmt.Println("No port selected")
-		return
-	}
+	port := config.EnvConfig.Port
 
 	fmt.Printf("WebSocket server running on ws://localhost:%s/\n", port)
 	if serveErr := http.ListenAndServe(":"+port, nil); serveErr != nil {

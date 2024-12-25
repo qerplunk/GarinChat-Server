@@ -3,8 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"strings"
+	"qerplunk/garin-chat/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -40,11 +39,7 @@ func JWTCheck() Middleware {
 				return
 			}
 
-			sb_secret := os.Getenv("SUPABASE_JWT_SECRET")
-			if sb_secret == "" {
-				fmt.Println("No supabase secret")
-				return
-			}
+			sb_secret := config.EnvConfig.JwtSecret
 
 			tok, jwt_err := jwt.Parse(token_str, func(token *jwt.Token) (interface{}, error) {
 				return []byte(sb_secret), nil
@@ -73,10 +68,10 @@ func OriginCheck() Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			allowed_origins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
+			allowedOrigins := config.EnvConfig.AllowedOrigins
 
-			for _, allowed_origin := range allowed_origins {
-				if origin == allowed_origin {
+			for _, allowedOrigin := range allowedOrigins {
+				if origin == allowedOrigin {
 					next(w, r)
 					return
 				}
