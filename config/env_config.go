@@ -23,7 +23,7 @@ func InitEnvConfig() bool {
 
 	EnvConfig = &envConfig{
 		AllowedOrigins: getEnvArray("ALLOWED_ORIGINS"),
-		JwtSecret:      getEnv("SUPABASE_JWT_SECRET"),
+		JwtSecret:      getEnv("JWT_DECODE_SECRET"),
 		Port:           getEnv("PORT"),
 	}
 

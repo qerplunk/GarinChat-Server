@@ -27,8 +27,8 @@ func CreateStack(middlewares ...Middleware) func(http.HandlerFunc) http.HandlerF
 }
 
 /*
-Checks if the JWT secret from Supabase can decode the URL query value of "token"
-The JWT secret should be located in .env under SUPABASE_JWT_SECRET
+Checks if the JWT decode secret provided can decode the URL query value of "token"
+The JWT decode secret should be located in .env under JWT_DECODE_SECRET
 */
 func JWTCheck() Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
