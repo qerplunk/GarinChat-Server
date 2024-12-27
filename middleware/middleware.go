@@ -3,20 +3,18 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"qerplunk/garin-chat/config"
+	"qerplunk/garin-chat/envconfig"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
-/*
-Creates a middleware stack out of Middlewares located in this file.
-Useful for reusing middleware stacks.
-
-Example:
-stack := middleware.CreateStack(middleware.JWT_Check(), middleware.OriginCheck())
-*/
+// Creates a middleware stack out of Middlewares located in this file.
+// Useful for reusing middleware stacks.
+//
+// Example:
+// stack := middleware.CreateStack(middleware.JWT_Check(), middleware.OriginCheck())
 func CreateStack(middlewares ...Middleware) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		for _, middleware := range middlewares {
@@ -26,10 +24,8 @@ func CreateStack(middlewares ...Middleware) func(http.HandlerFunc) http.HandlerF
 	}
 }
 
-/*
-Checks if the JWT decode secret provided can decode the URL query value of "token"
-The JWT decode secret should be located in .env under JWT_DECODE_SECRET
-*/
+// Checks if the JWT decode secret provided can decode the URL query value of "token"
+// The JWT decode secret should be located in .env under JWT_DECODE_SECRET
 func JWTCheck() Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +35,7 @@ func JWTCheck() Middleware {
 				return
 			}
 
-			sb_secret := config.EnvConfig.JwtSecret
+			sb_secret := envconfig.EnvConfig.JwtSecret
 
 			tok, jwt_err := jwt.Parse(token_str, func(token *jwt.Token) (interface{}, error) {
 				return []byte(sb_secret), nil
@@ -60,15 +56,13 @@ func JWTCheck() Middleware {
 	}
 }
 
-/*
-Checks if the request origin is allowed
-Allowed origins should be located in .env under ALLOWED_ORIGINS as a list
-*/
+// Checks if the request origin is allowed
+// Allowed origins should be located in .env under ALLOWED_ORIGINS as a list
 func OriginCheck() Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			allowedOrigins := config.EnvConfig.AllowedOrigins
+			allowedOrigins := envconfig.EnvConfig.AllowedOrigins
 
 			for _, allowedOrigin := range allowedOrigins {
 				if origin == allowedOrigin {

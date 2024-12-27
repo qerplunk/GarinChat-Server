@@ -1,11 +1,12 @@
-package main
+package wsserver
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"qerplunk/garin-chat/config"
-	"qerplunk/garin-chat/middleware"
+	"qerplunk/garin-chat/rooms"
+	"qerplunk/garin-chat/types"
+	"qerplunk/garin-chat/ws_server/rate_limiter"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -19,74 +20,28 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Message type used for unmarshalling WebSocket message into a variable
-type Message struct {
-	Type       string `json:"type"`
-	Message    string `json:"message,omitempty"`
-	Username   string `json:"username,omitempty"`
-	Room       string `json:"room,omitempty"`
-	TotalUsers int    `json:"totalUsers,omitempty"`
-}
-
-/*
-Type of WebSocket server messages.
-WsJoin: new user joins a room
-WsUserLeave: user leaves a room
-WsMessage: user sends a message to a room
-*/
+// Type of WebSocket server messages.
+// WsJoin: new user joins a room
+// WsUserLeave: user leaves a room
+// WsMessage: user sends a message to a room
 const (
 	WsJoin      = "join"
 	WsUserLeave = "userleave"
 	WsMessage   = "message"
 )
 
-// Room manager used to store and map room names to WebSocket connections
-var roomManager *RoomManager = NewRoomManager()
-
-// The frontend will hard limit users sending messages to once every 2.5 seconds
-// But due to network timings the server limits to 1 message/second to avoid kicking good users out
-const (
-	maxMessagesPerSecond = 1
-	slidingWindowSeconds = 1
-)
-
-type rateLimiter struct {
-	// Track the number of messages received in the current time window
-	messageCount int
-	// Store the timestamp of the last time the counter 'messageCount' was reset
-	// Defines the start of the current time window
-	lastReset time.Time
-}
-
-// Returns if the user is under the rate limit and allowed to send messages to the server
-func (rl *rateLimiter) allowMessage() bool {
-	now := time.Now()
-
-	// Reset rate limiter every slidingWindowSeconds
-	if now.Sub(rl.lastReset) > slidingWindowSeconds*time.Second {
-		rl.messageCount = 0
-		rl.lastReset = now
-	}
-
-	if rl.messageCount >= maxMessagesPerSecond {
-		return false
-	}
-
-	// User did not go over rate limit
-	rl.messageCount += 1
-	return true
-}
+// Room manager service used to store and map room names to WebSocket connections
+var roomManager *rooms.RoomService = rooms.NewRoomService()
 
 // Handles a WebSocket connection instance
 func handleConnection(conn *websocket.Conn) {
 	defer conn.Close()
 
 	// The currentName and currentRoom variables are set once a user joins a room
-	var currentName string
-	var currentRoom string
+	var currentName, currentRoom string
 
-	rateLimiter := rateLimiter{
-		lastReset: time.Now(),
+	rateLimiter := ratelimiter.RateLimiter{
+		LastReset: time.Now(),
 	}
 
 	for {
@@ -97,7 +52,7 @@ func handleConnection(conn *websocket.Conn) {
 			// Handles "userleave" messages
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
 				if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
-					dataToSend := Message{
+					dataToSend := types.Message{
 						Type:       WsUserLeave,
 						Username:   currentName,
 						TotalUsers: len(roomManager.Rooms[currentRoom]),
@@ -111,11 +66,11 @@ func handleConnection(conn *websocket.Conn) {
 		}
 
 		// Update rate limiter here to also limit invalid messages getting received
-		if !rateLimiter.allowMessage() {
+		if !rateLimiter.AllowMessage() {
 			fmt.Println("Rate limit exceeded, closing connection")
 
 			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
-				dataToSend := Message{
+				dataToSend := types.Message{
 					Type:       WsUserLeave,
 					Username:   currentName,
 					TotalUsers: len(roomManager.Rooms[currentRoom]),
@@ -126,12 +81,12 @@ func handleConnection(conn *websocket.Conn) {
 			break
 		}
 
-		var msg Message
+		var msg types.Message
 		if err := json.Unmarshal(message, &msg); err != nil {
 			fmt.Println("Error unmarshalling message:", err)
 
 			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
-				dataToSend := Message{
+				dataToSend := types.Message{
 					Type:       WsUserLeave,
 					Username:   currentName,
 					TotalUsers: len(roomManager.Rooms[currentRoom]),
@@ -152,11 +107,11 @@ func handleConnection(conn *websocket.Conn) {
 				return
 			}
 
-			fmt.Println("JOIN:", currentName, currentRoom)
+			fmt.Printf("JOIN: '%s' room '%s'\n", currentName, currentRoom)
 
 			roomManager.AddConnectionToRoom(currentRoom, conn)
 
-			dataToSend := Message{
+			dataToSend := types.Message{
 				Type:       WsJoin,
 				Username:   currentName,
 				TotalUsers: len(roomManager.Rooms[currentRoom]),
@@ -177,7 +132,7 @@ func handleConnection(conn *websocket.Conn) {
 
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
 
-			dataToSend := Message{
+			dataToSend := types.Message{
 				Type:     WsMessage,
 				Username: currentName,
 				Message:  msg.Message,
@@ -190,11 +145,11 @@ func handleConnection(conn *websocket.Conn) {
 		}
 	}
 
-	fmt.Println("End of WebSocket session")
+	fmt.Println("End of WebSocket session for", currentName)
 }
 
 // The basic HTTP connection, not WebSocket yet
-func handleWebSocket(w http.ResponseWriter, r *http.Request) {
+func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, connErr := upgrader.Upgrade(w, r, nil)
 
 	if connErr != nil {
@@ -203,24 +158,4 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go handleConnection(conn)
-}
-
-func main() {
-	if envConfig := config.InitEnvConfig(); !envConfig {
-		return
-	}
-
-	middlewareStack := middleware.CreateStack(
-		middleware.JWTCheck(),
-		middleware.OriginCheck(),
-	)
-
-	http.HandleFunc("/", middlewareStack(handleWebSocket))
-
-	port := config.EnvConfig.Port
-
-	fmt.Printf("WebSocket server running on ws://localhost:%s/\n", port)
-	if serveErr := http.ListenAndServe(":"+port, nil); serveErr != nil {
-		fmt.Println("Error starting server:", serveErr)
-	}
 }
