@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"qerplunk/garin-chat/envconfig"
 	"qerplunk/garin-chat/rooms"
 	"qerplunk/garin-chat/types"
 	"qerplunk/garin-chat/ws_server/rate_limiter"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 )
 
@@ -25,6 +27,7 @@ var upgrader = websocket.Upgrader{
 // WsUserLeave: user leaves a room
 // WsMessage: user sends a message to a room
 const (
+	WsAuth      = "auth"
 	WsJoin      = "join"
 	WsUserLeave = "userleave"
 	WsMessage   = "message"
@@ -39,6 +42,8 @@ func handleConnection(conn *websocket.Conn) {
 
 	// The currentName and currentRoom variables are set once a user joins a room
 	var currentName, currentRoom string
+	var authenticated = false
+	var hasJoined = false
 
 	rateLimiter := ratelimiter.RateLimiter{
 		LastReset: time.Now(),
@@ -99,7 +104,51 @@ func handleConnection(conn *websocket.Conn) {
 
 		// Checks the type of message the user sent to the server
 		switch msg.Type {
+		case WsAuth:
+			// Don't let users spam auth messages
+			if authenticated {
+				return
+			}
+
+			token := msg.Message
+
+			if token == "" {
+				fmt.Println("No Authorization token")
+				return
+			}
+
+			sb_secret := envconfig.EnvConfig.JwtSecret
+
+			tok, jwt_err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+				return []byte(sb_secret), nil
+			})
+
+			if jwt_err != nil {
+				fmt.Println("Error trying to parse JWT:", jwt_err)
+				return
+			}
+
+			if !tok.Valid {
+				fmt.Println("Invalid token")
+				return
+			}
+
+			authenticated = true
+
+			// Don't count the auth message towards the rate limiter
+			rateLimiter.Reset()
+
 		case WsJoin:
+			if !authenticated {
+				fmt.Println("Not authorized, can't join")
+				return
+			}
+
+			// Don't let users spam join messages
+			if hasJoined {
+				return
+			}
+
 			currentName = msg.Username
 			currentRoom = msg.Room
 			if len(currentName) < 3 || len(currentRoom) < 3 {
@@ -117,12 +166,21 @@ func handleConnection(conn *websocket.Conn) {
 				TotalUsers: len(roomManager.Rooms[currentRoom]),
 			}
 			roomManager.SendMessageToAll(currentRoom, dataToSend)
+			hasJoined = true
+
+			// Don't count the join message towards rate limiter
+			rateLimiter.Reset()
 
 		case WsUserLeave:
 			fmt.Println("USERLEAVE:", currentName)
 			break
 
 		case WsMessage:
+			if !authenticated || !hasJoined {
+				fmt.Println("Can't send messages... has not joined or been  auth'd")
+				return
+			}
+
 			fmt.Println("MESSAGE")
 
 			if len(msg.Message) == 0 {

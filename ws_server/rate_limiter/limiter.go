@@ -37,3 +37,10 @@ func (rl *RateLimiter) AllowMessage() bool {
 	rl.MessageCount += 1
 	return true
 }
+
+// Reset the rate limiter.
+func (rl *RateLimiter) Reset() {
+	// Reset rate limiter
+	rl.MessageCount = 0
+	rl.LastReset = time.Now()
+}

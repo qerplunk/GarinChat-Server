@@ -14,7 +14,6 @@ func main() {
 	}
 
 	middlewareStack := middleware.CreateStack(
-		middleware.JWTCheck(),
 		middleware.OriginCheck(),
 	)
 
