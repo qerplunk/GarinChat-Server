@@ -3,9 +3,8 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"qerplunk/garin-chat/auth"
 	"qerplunk/garin-chat/envconfig"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
@@ -30,24 +29,7 @@ func JWTCheck() Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token_str := r.URL.Query().Get("token")
-			if token_str == "" {
-				fmt.Println("No Authorization token")
-				return
-			}
-
-			sb_secret := envconfig.EnvConfig.JwtSecret
-
-			tok, jwt_err := jwt.Parse(token_str, func(token *jwt.Token) (interface{}, error) {
-				return []byte(sb_secret), nil
-			})
-
-			if jwt_err != nil {
-				fmt.Println("Error trying to parse JWT:", jwt_err)
-				return
-			}
-
-			if !tok.Valid {
-				fmt.Println("Invalid token")
+			if !auth.JWTTokenValid(token_str) {
 				return
 			}
 

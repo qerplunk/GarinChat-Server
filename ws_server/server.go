@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"qerplunk/garin-chat/envconfig"
+	"qerplunk/garin-chat/auth"
 	"qerplunk/garin-chat/rooms"
 	"qerplunk/garin-chat/types"
 	"qerplunk/garin-chat/ws_server/rate_limiter"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 )
 
@@ -111,25 +110,7 @@ func handleConnection(conn *websocket.Conn) {
 			}
 
 			token := msg.Message
-
-			if token == "" {
-				fmt.Println("No Authorization token")
-				return
-			}
-
-			sb_secret := envconfig.EnvConfig.JwtSecret
-
-			tok, jwt_err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-				return []byte(sb_secret), nil
-			})
-
-			if jwt_err != nil {
-				fmt.Println("Error trying to parse JWT:", jwt_err)
-				return
-			}
-
-			if !tok.Valid {
-				fmt.Println("Invalid token")
+			if !auth.JWTTokenValid(token) {
 				return
 			}
 
