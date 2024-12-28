@@ -1,4 +1,4 @@
-# GarinChat backend
+# GarinChat server
 
 > [!NOTE]
 > The API to use this does not exist and is currently being worked on.
@@ -38,7 +38,7 @@ A [golang](https://go.dev/)-based WebSocket server (using [gorilla/websocket](ht
 
   `docker compose up --build`
 
-- **Dockerfile**
+- **Dockerfile**  
   `docker build -t garinchat-image .`  
   `docker run --env-file=.env -p 8080:8080 --name garinchat-container garinchat-image`
 

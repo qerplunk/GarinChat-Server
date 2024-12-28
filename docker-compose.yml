@@ -1,6 +1,6 @@
 name: garin-chat
 services:
-  backend:
+  server:
     build:
       context: ./
       dockerfile: Dockerfile
