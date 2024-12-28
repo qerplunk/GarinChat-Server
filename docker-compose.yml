@@ -1,0 +1,14 @@
+name: garin-chat
+services:
+  backend:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: garinchat-container # Reuse container
+    image: garinchat-image
+    restart: no
+    env_file:
+      - .env
+    ports:
+      - "8080:8080" # Replace with your own port numbers
+
