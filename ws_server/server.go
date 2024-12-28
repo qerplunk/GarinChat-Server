@@ -170,7 +170,7 @@ func handleConnection(conn *websocket.Conn) {
 
 		case WsJoin:
 			if !authenticated {
-				fmt.Println("Not authorized, can't join")
+				fmt.Println("Not authenticated, can't join")
 				return
 			}
 
