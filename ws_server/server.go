@@ -210,7 +210,7 @@ func handleConnection(conn *websocket.Conn) {
 
 		case WsMessage:
 			if !authenticated || !hasJoined {
-				fmt.Println("Can't send messages... has not joined or been  auth'd")
+				fmt.Println("Can't send messages... user has not joined or been auth'd")
 				return
 			}
 
