@@ -8,6 +8,7 @@ import (
 	"qerplunk/garin-chat/rooms"
 	"qerplunk/garin-chat/types"
 	"qerplunk/garin-chat/ws_server/rate_limiter"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -48,10 +49,55 @@ func handleConnection(conn *websocket.Conn) {
 		LastReset: time.Now(),
 	}
 
+	// Auth and join timeout channels to avoid users from:
+	// 1. Connecting without authenticating
+	// 2. Authenticating without joining room
+	authTimeoutChannel := make(chan struct{})
+	joinTimeoutChannel := make(chan struct{})
+
+	// Use a mutex since multiple places can close the connection
+	var closeMutex sync.Mutex
+	var isConnClosed bool = false
+
+	// Local goroutine to handle channels
+	// User has to auth AND join to avoid timeout
+	go func() {
+		select {
+		case <-authTimeoutChannel:
+			go func() {
+				select {
+				case <-joinTimeoutChannel:
+					return
+				case <-time.After(2 * time.Second):
+					fmt.Println("Join timeout")
+					closeMutex.Lock()
+					defer closeMutex.Unlock()
+					isConnClosed = true
+					conn.Close()
+				}
+			}()
+		case <-time.After(2 * time.Second):
+			fmt.Println("Auth timeout")
+			closeMutex.Lock()
+			defer closeMutex.Unlock()
+			isConnClosed = true
+			conn.Close()
+		}
+	}()
+
 	for {
 		_, message, err := conn.ReadMessage()
 
 		if err != nil {
+			// Return since conn.Close() will immediately make websocket.IsCloseError to return an error
+			// Since the user has not joined we don't have to handle anything else
+			closeMutex.Lock()
+			defer closeMutex.Unlock()
+			if isConnClosed {
+				fmt.Println("Connection already closed, skip error checking")
+				return
+			}
+
 			// Handle user closing browser and terminating WebSocket connection
 			// Handles "userleave" messages
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNormalClosure, websocket.CloseAbnormalClosure) {
@@ -119,6 +165,9 @@ func handleConnection(conn *websocket.Conn) {
 			// Don't count the auth message towards the rate limiter
 			rateLimiter.Reset()
 
+			// Stop auth timeout
+			close(authTimeoutChannel)
+
 		case WsJoin:
 			if !authenticated {
 				fmt.Println("Not authorized, can't join")
@@ -151,6 +200,9 @@ func handleConnection(conn *websocket.Conn) {
 
 			// Don't count the join message towards rate limiter
 			rateLimiter.Reset()
+
+			// Stop join timeout
+			close(joinTimeoutChannel)
 
 		case WsUserLeave:
 			fmt.Println("USERLEAVE:", currentName)
