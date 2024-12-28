@@ -13,7 +13,7 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 // Useful for reusing middleware stacks.
 //
 // Example:
-// stack := middleware.CreateStack(middleware.JWT_Check(), middleware.OriginCheck())
+// stack := middleware.CreateStack(middleware.JWTCheck(), middleware.OriginCheck())
 func CreateStack(middlewares ...Middleware) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		for _, middleware := range middlewares {
@@ -28,8 +28,8 @@ func CreateStack(middlewares ...Middleware) func(http.HandlerFunc) http.HandlerF
 func JWTCheck() Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token_str := r.URL.Query().Get("token")
-			if !auth.JWTTokenValid(token_str) {
+			token := r.URL.Query().Get("token")
+			if !auth.JWTTokenValid(token) {
 				return
 			}
 
