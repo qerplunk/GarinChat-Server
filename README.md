@@ -1,8 +1,5 @@
 # GarinChat server
 
-> [!NOTE]
-> The API to use this does not exist and is currently being worked on.
-
 > [!IMPORTANT]
 > You will have to implement a third party user authentication service for your frontend that is able to generate JWT tokens.
 
@@ -10,7 +7,12 @@
 
 A [golang](https://go.dev/)-based WebSocket server (using [gorilla/websocket](https://github.com/gorilla/websocket)) for chat room messaging.
 
-## Server resource friendly features
+- [Server features](#server-resource-friendly-features)
+- [How to run](#how-to-run)
+- [Server API](#server-api-for-client-implementation)
+- [Work in Progress features](#wip-features)
+
+## Server resource-friendly features
 
 > Helps avoid users from using scripts to spam your server.
 >
@@ -43,16 +45,77 @@ A [golang](https://go.dev/)-based WebSocket server (using [gorilla/websocket](ht
   `docker run --env-file=.env -p 8080:8080 --name garinchat-container garinchat-image`
 
 - **Build and run using the go cli**  
+   `go mod download`  
    `go build .`  
    `./garin-chat`  
    <em>or</em>  
+   `go mod download`  
    `go run .`
 
 ## Server API for client implementation
 
-<em>Server API WIP</em>
+- **Establish a connection with your backend**
+
+  ```javascript
+  const ws = new WebSocket("wss://www.example.com");
+  ```
+
+- **Send JWT authentication token**
+
+  The server will close the connection with the user if an `auth` message is not sent within 2 seconds of connecting.
+
+  ```javascript
+  ws.send(
+    JSON.stringify({
+      type: "auth",
+      message: token,
+    }),
+  );
+  ```
+
+- **Join a room**
+
+  The server will close the connection with the user if a `join` message is not sent within 2 seconds of authenticating.  
+  By default, the username and room have to be strings length of 3 or greater.
+
+  ```javascript
+  ws.send(
+    JSON.stringify({
+      type: "join",
+      username: username,
+      room: room,
+    }),
+  );
+  ```
+
+- **Send a message to everyone in the same room**
+
+  The server will not send the message back to the user that sent it, make sure to append the message to the user's local chat message list.  
+  Messages of length 0 will remove the user from the room and cause the connection to terminate.
+
+  ```javascript
+  ws.send(
+    JSON.stringify({
+      type: "message",
+      message: userInputMessage,
+    }),
+  );
+  ```
+
+- **Leave a room**
+
+  The server will remove the user's connection from the room the user is currently in. If no users are left in that room the server will remove the room from the active rooms map.
+
+  ```javascript
+  ws.send(
+    JSON.stringify({
+      type: "userleave",
+    }),
+  );
+  ```
 
 # WIP features
 
+- Better server settings for timeout lengths, rate limiting, etc.
 - Time out users if they have not sent messages
 - A ban list for users who repeatedly get kicked by the rate limiter, could use sqlite for this.
