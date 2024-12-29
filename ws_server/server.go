@@ -218,7 +218,7 @@ func handleConnection(conn *websocket.Conn) {
 
 			if len(msg.Message) == 0 {
 				fmt.Println("No message")
-				return
+				break
 			}
 
 			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
