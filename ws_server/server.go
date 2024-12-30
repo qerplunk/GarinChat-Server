@@ -205,12 +205,21 @@ func handleConnection(conn *websocket.Conn) {
 			close(joinTimeoutChannel)
 
 		case WsUserLeave:
+			if !authenticated || !hasJoined {
+				fmt.Println("Don't handle leave if user has not joined or auth'd")
+				close(authTimeoutChannel)
+				close(joinTimeoutChannel)
+				return
+			}
+
 			fmt.Println("USERLEAVE:", currentName)
 			break
 
 		case WsMessage:
 			if !authenticated || !hasJoined {
 				fmt.Println("Can't send messages... user has not joined or been auth'd")
+				close(authTimeoutChannel)
+				close(joinTimeoutChannel)
 				return
 			}
 
