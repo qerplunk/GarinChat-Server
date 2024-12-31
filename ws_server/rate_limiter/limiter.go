@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// The frontend will hard limit users sending messages to once every 2.5 seconds
-// But due to network timings the server limits to 1 message/second to avoid kicking good users out
+// Default messages per time window the server expects from a frontend user
+// Configure based on your needs
 const (
 	maxMessagesPerSecond = 1
 	slidingWindowSeconds = 1
@@ -14,7 +14,6 @@ const (
 type RateLimiter struct {
 	// Track the number of messages received in the current time window
 	MessageCount int
-	// Store the timestamp of the last time the counter 'messageCount' was reset
 	// Defines the start of the current time window
 	LastReset time.Time
 }
@@ -40,7 +39,6 @@ func (rl *RateLimiter) AllowMessage() bool {
 
 // Reset the rate limiter.
 func (rl *RateLimiter) Reset() {
-	// Reset rate limiter
 	rl.MessageCount = 0
 	rl.LastReset = time.Now()
 }
