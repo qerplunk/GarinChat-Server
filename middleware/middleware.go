@@ -3,7 +3,6 @@ package middleware
 import (
 	"fmt"
 	"net/http"
-	"qerplunk/garin-chat/auth"
 	"qerplunk/garin-chat/envconfig"
 )
 
@@ -13,28 +12,13 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 // Useful for reusing middleware stacks.
 //
 // Example:
-// stack := middleware.CreateStack(middleware.JWTCheck(), middleware.OriginCheck())
+// stack := middleware.CreateStack(middleware.OriginCheck(), middleware.FooBarCheck())
 func CreateStack(middlewares ...Middleware) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		for _, middleware := range middlewares {
 			next = middleware(next)
 		}
 		return next
-	}
-}
-
-// Checks if the JWT decode secret provided can decode the URL query value of "token"
-// The JWT decode secret should be located in .env under JWT_DECODE_SECRET
-func JWTCheck() Middleware {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token := r.URL.Query().Get("token")
-			if !auth.JWTTokenValid(token) {
-				return
-			}
-
-			next(w, r)
-		})
 	}
 }
 
