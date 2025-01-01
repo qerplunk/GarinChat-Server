@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 // Environment variables that are required
@@ -19,6 +21,10 @@ var EnvConfig *envConfig
 var loadedAllEnvs bool
 
 func InitEnvConfig() bool {
+	if err := godotenv.Load(); err != nil {
+		fmt.Printf("Error loading .env file")
+	}
+
 	loadedAllEnvs = true
 
 	EnvConfig = &envConfig{
