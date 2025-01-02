@@ -68,7 +68,7 @@ A [golang](https://go.dev/)-based WebSocket server (using [gorilla/websocket](ht
   ws.send(
     JSON.stringify({
       type: "auth",
-      message: token,
+      body: token,
     }),
   );
   ```
@@ -97,7 +97,7 @@ A [golang](https://go.dev/)-based WebSocket server (using [gorilla/websocket](ht
   ws.send(
     JSON.stringify({
       type: "message",
-      message: userInputMessage,
+      body: userInputMessage,
     }),
   );
   ```

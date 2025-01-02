@@ -23,6 +23,7 @@ var upgrader = websocket.Upgrader{
 }
 
 // Type of WebSocket server messages.
+// WsAuth: new user wants to authenticate
 // WsJoin: new user joins a room
 // WsUserLeave: user leaves a room
 // WsMessage: user sends a message to a room
@@ -155,7 +156,7 @@ func handleConnection(conn *websocket.Conn) {
 				return
 			}
 
-			token := msg.Message
+			token := msg.Body
 			if !auth.JWTTokenValid(token) {
 				return
 			}
@@ -225,17 +226,17 @@ func handleConnection(conn *websocket.Conn) {
 
 			fmt.Println("MESSAGE")
 
-			if len(msg.Message) == 0 {
+			if len(msg.Body) == 0 {
 				fmt.Println("No message")
 				break
 			}
 
-			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Message)
+			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Body)
 
 			dataToSend := types.Message{
 				Type:     WsMessage,
 				Username: currentName,
-				Message:  msg.Message,
+				Body:     msg.Body,
 			}
 			roomManager.SendMessageToAllExceptSelf(conn, currentRoom, dataToSend)
 
