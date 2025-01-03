@@ -1,7 +1,7 @@
 package envconfig
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -22,7 +22,7 @@ var loadedAllEnvs bool
 
 func InitEnvConfig() bool {
 	if err := godotenv.Load(); err != nil {
-		fmt.Printf("Error loading .env file")
+		log.Printf("Error loading .env file")
 	}
 
 	loadedAllEnvs = true
@@ -41,7 +41,7 @@ func getEnv(envName string) string {
 	env := os.Getenv(envName)
 
 	if len(env) == 0 {
-		fmt.Println("No env for:", envName)
+		log.Println("No env for:", envName)
 		loadedAllEnvs = false
 	}
 
@@ -54,7 +54,7 @@ func getEnvArray(envName string) []string {
 
 	// Check the env string first before splitting into an array
 	if len(envStr) == 0 {
-		fmt.Println("No env for:", envName)
+		log.Println("No env for:", envName)
 		loadedAllEnvs = false
 	}
 

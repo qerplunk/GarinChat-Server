@@ -2,7 +2,7 @@ package rooms
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"qerplunk/garin-chat/types"
 
 	"github.com/gorilla/websocket"
@@ -50,7 +50,7 @@ func (roomManager RoomService) RemoveConnection(room string, conn *websocket.Con
 
 		if len(conns) == 0 {
 			delete(roomManager.Rooms, room)
-			fmt.Printf("Room '%s' is empty, closing...\n", room)
+			log.Printf("Room '%s' is empty, closing...\n", room)
 			usersLeft = false
 		}
 	}
@@ -60,14 +60,14 @@ func (roomManager RoomService) RemoveConnection(room string, conn *websocket.Con
 // Sends a message to all users within the room.
 func (roomManager RoomService) SendMessageToAll(roomName string, data types.Message) {
 	if _, exists := roomManager.Rooms[roomName]; !exists {
-		fmt.Printf("Room '%s' does not exist\n", roomName)
+		log.Printf("Room '%s' does not exist\n", roomName)
 		return
 	}
 
 	jsonData, jsonErr := json.Marshal(data)
 
 	if jsonErr != nil {
-		fmt.Println("Error Marshalling data:", jsonErr)
+		log.Println("Error Marshalling data:", jsonErr)
 		return
 	}
 	for conn := range roomManager.Rooms[roomName] {
@@ -78,14 +78,14 @@ func (roomManager RoomService) SendMessageToAll(roomName string, data types.Mess
 // Sends a message to all users (except the sender) within the room.
 func (roomManager RoomService) SendMessageToAllExceptSelf(self *websocket.Conn, roomName string, data types.Message) {
 	if _, exists := roomManager.Rooms[roomName]; !exists {
-		fmt.Printf("Room '%s' does not exist\n", roomName)
+		log.Printf("Room '%s' does not exist\n", roomName)
 		return
 	}
 
 	jsonData, jsonErr := json.Marshal(data)
 
 	if jsonErr != nil {
-		fmt.Println("Error Marshalling data:", jsonErr)
+		log.Println("Error Marshalling data:", jsonErr)
 		return
 	}
 	for conn := range roomManager.Rooms[roomName] {

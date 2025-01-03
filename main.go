@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"qerplunk/garin-chat/envconfig"
 	"qerplunk/garin-chat/middleware"
@@ -21,8 +21,8 @@ func main() {
 
 	port := envconfig.EnvConfig.Port
 
-	fmt.Printf("WebSocket server running on ws://localhost:%s/\n", port)
+	log.Printf("WebSocket server running on ws://localhost:%s/\n", port)
 	if serveErr := http.ListenAndServe(":"+port, nil); serveErr != nil {
-		fmt.Println("Error starting server:", serveErr)
+		log.Println("Error starting server:", serveErr)
 	}
 }

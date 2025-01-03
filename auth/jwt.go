@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"fmt"
+	"log"
 	"qerplunk/garin-chat/envconfig"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -11,7 +11,7 @@ import (
 // The JWT decode secret should be located in .env under JWT_DECODE_SECRET
 func JWTTokenValid(token string) bool {
 	if token == "" {
-		fmt.Println("No authentication token")
+		log.Println("No authentication token")
 		return false
 	}
 
@@ -22,12 +22,12 @@ func JWTTokenValid(token string) bool {
 	})
 
 	if jwtError != nil {
-		fmt.Println("Error trying to parse JWT:", jwtError)
+		log.Println("Error trying to parse JWT:", jwtError)
 		return false
 	}
 
 	if !tok.Valid {
-		fmt.Println("Invalid token")
+		log.Println("Invalid token")
 		return false
 	}
 

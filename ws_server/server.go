@@ -2,7 +2,7 @@ package wsserver
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"net/http"
 	"qerplunk/garin-chat/auth"
 	"qerplunk/garin-chat/rooms"
@@ -70,7 +70,7 @@ func handleConnection(conn *websocket.Conn) {
 				case <-joinTimeoutChannel:
 					return
 				case <-time.After(2 * time.Second):
-					fmt.Println("Join timeout")
+					log.Println("Join timeout")
 					closeMutex.Lock()
 					defer closeMutex.Unlock()
 					isConnClosed = true
@@ -78,7 +78,7 @@ func handleConnection(conn *websocket.Conn) {
 				}
 			}()
 		case <-time.After(2 * time.Second):
-			fmt.Println("Auth timeout")
+			log.Println("Auth timeout")
 			closeMutex.Lock()
 			defer closeMutex.Unlock()
 			isConnClosed = true
@@ -95,7 +95,7 @@ func handleConnection(conn *websocket.Conn) {
 			closeMutex.Lock()
 			defer closeMutex.Unlock()
 			if isConnClosed {
-				fmt.Println("Connection already closed, skip error checking")
+				log.Println("Connection already closed, skip error checking")
 				return
 			}
 
@@ -111,14 +111,14 @@ func handleConnection(conn *websocket.Conn) {
 					roomManager.SendMessageToAll(currentRoom, dataToSend)
 				}
 			} else {
-				fmt.Println("Error reading message:", err)
+				log.Println("Error reading message:", err)
 			}
 			break
 		}
 
 		// Update rate limiter here to also limit invalid messages getting received
 		if !rateLimiter.AllowMessage() {
-			fmt.Println("Rate limit exceeded, closing connection")
+			log.Println("Rate limit exceeded, closing connection")
 
 			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
 				dataToSend := types.Message{
@@ -134,7 +134,7 @@ func handleConnection(conn *websocket.Conn) {
 
 		var msg types.Message
 		if err := json.Unmarshal(message, &msg); err != nil {
-			fmt.Println("Error unmarshalling message:", err)
+			log.Println("Error unmarshalling message:", err)
 
 			if usersLeft := roomManager.RemoveConnection(currentRoom, conn); usersLeft {
 				dataToSend := types.Message{
@@ -174,7 +174,7 @@ func handleConnection(conn *websocket.Conn) {
 
 		case WsJoin:
 			if !authenticated {
-				fmt.Println("Not authenticated, can't join")
+				log.Println("Not authenticated, can't join")
 				return
 			}
 
@@ -186,11 +186,11 @@ func handleConnection(conn *websocket.Conn) {
 			currentName = msg.Username
 			currentRoom = msg.Room
 			if len(currentName) < 3 || len(currentRoom) < 3 {
-				fmt.Println("Name and room have to be length >= 3")
+				log.Println("Name and room have to be length >= 3")
 				return
 			}
 
-			fmt.Printf("JOIN: '%s' room '%s'\n", currentName, currentRoom)
+			log.Printf("JOIN: '%s' room '%s'\n", currentName, currentRoom)
 
 			roomManager.AddConnectionToRoom(currentRoom, conn)
 
@@ -210,31 +210,31 @@ func handleConnection(conn *websocket.Conn) {
 
 		case WsUserLeave:
 			if !authenticated || !hasJoined {
-				fmt.Println("Don't handle leave if user has not joined or auth'd")
+				log.Println("User not authenticated or in a room trying to leave")
 				close(authTimeoutChannel)
 				close(joinTimeoutChannel)
 				return
 			}
 
-			fmt.Println("USERLEAVE:", currentName)
+			log.Println("USERLEAVE:", currentName)
 			break
 
 		case WsMessage:
 			if !authenticated || !hasJoined {
-				fmt.Println("Can't send messages... user has not joined or been auth'd")
+				log.Println("Can't send messages... user has not joined or been auth'd")
 				close(authTimeoutChannel)
 				close(joinTimeoutChannel)
 				return
 			}
 
-			fmt.Println("MESSAGE")
+			log.Println("MESSAGE")
 
 			if len(msg.Body) == 0 {
-				fmt.Println("No message")
+				log.Println("No message")
 				break
 			}
 
-			fmt.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Body)
+			log.Printf("\t%s: %s > %s\n", currentRoom, currentName, msg.Body)
 
 			dataToSend := types.Message{
 				Type:     WsMessage,
@@ -244,12 +244,12 @@ func handleConnection(conn *websocket.Conn) {
 			roomManager.SendMessageToAllExceptSelf(conn, currentRoom, dataToSend)
 
 		default:
-			fmt.Printf("Unknown message type (%#v), closing connection\n", msg)
+			log.Printf("Unknown message type (%#v), closing connection\n", msg)
 			return
 		}
 	}
 
-	fmt.Println("End of WebSocket session for", currentName)
+	log.Println("End of WebSocket session for", currentName)
 }
 
 // The basic HTTP connection, not WebSocket yet
@@ -257,7 +257,7 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, connErr := upgrader.Upgrade(w, r, nil)
 
 	if connErr != nil {
-		fmt.Println("Error upgrading connection:", connErr)
+		log.Println("Error upgrading connection:", connErr)
 		return
 	}
 

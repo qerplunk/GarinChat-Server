@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"fmt"
+	"log"
 	"net/http"
 	"qerplunk/garin-chat/envconfig"
 )
@@ -37,7 +37,7 @@ func OriginCheck() Middleware {
 				}
 			}
 
-			fmt.Printf("Origin %s NOT allowed\n", origin)
+			log.Printf("Origin %s NOT allowed\n", origin)
 			return
 		})
 	}
