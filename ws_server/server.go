@@ -157,7 +157,10 @@ func handleConnection(conn *websocket.Conn) {
 			}
 
 			token := msg.Body
+			// Close channels as they will no longer be needed
 			if !auth.JWTTokenValid(token) {
+				close(authTimeoutChannel)
+				close(joinTimeoutChannel)
 				return
 			}
 
