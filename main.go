@@ -21,7 +21,7 @@ func main() {
 
 	port := envconfig.EnvConfig.Port
 
-	log.Printf("WebSocket server running on ws://localhost:%s/\n", port)
+	log.Printf("WebSocket server running on wss://localhost:%s/\n", port)
 	if serveErr := http.ListenAndServe(":"+port, nil); serveErr != nil {
 		log.Println("Error starting server:", serveErr)
 	}
