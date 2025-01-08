@@ -210,7 +210,7 @@ func handleConnection(conn *websocket.Conn) {
 
 		case WsUserLeave:
 			if !authenticated || !hasJoined {
-				log.Println("User not authenticated or in a room trying to leave")
+				log.Println("User trying to leave but hasn't authenticated or joined a room")
 				close(authTimeoutChannel)
 				close(joinTimeoutChannel)
 				return
@@ -221,7 +221,7 @@ func handleConnection(conn *websocket.Conn) {
 
 		case WsMessage:
 			if !authenticated || !hasJoined {
-				log.Println("Can't send messages... user has not joined or been auth'd")
+				log.Println("Can't send messages, user has not joined or been auth'd")
 				close(authTimeoutChannel)
 				close(joinTimeoutChannel)
 				return
@@ -230,7 +230,7 @@ func handleConnection(conn *websocket.Conn) {
 			log.Println("MESSAGE")
 
 			if len(msg.Body) == 0 {
-				log.Println("No message")
+				log.Println("No message provided")
 				break
 			}
 
@@ -249,7 +249,9 @@ func handleConnection(conn *websocket.Conn) {
 		}
 	}
 
-	log.Println("End of WebSocket session for", currentName)
+	if len(currentName) != 0 {
+		log.Println("End of WebSocket session for", currentName)
+	}
 }
 
 // The basic HTTP connection, not WebSocket yet

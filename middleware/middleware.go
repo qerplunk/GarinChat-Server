@@ -37,7 +37,7 @@ func OriginCheck() Middleware {
 				}
 			}
 
-			log.Printf("Origin %s NOT allowed\n", origin)
+			log.Printf("Origin '%s' is NOT allowed\n", origin)
 			return
 		})
 	}

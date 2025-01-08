@@ -50,7 +50,7 @@ func (roomManager RoomService) RemoveConnection(room string, conn *websocket.Con
 
 		if len(conns) == 0 {
 			delete(roomManager.Rooms, room)
-			log.Printf("Room '%s' is empty, closing...\n", room)
+			log.Printf("Room '%s' is empty, closing\n", room)
 			usersLeft = false
 		}
 	}

@@ -11,7 +11,7 @@ import (
 // The JWT decode secret should be located in .env under JWT_DECODE_SECRET
 func JWTTokenValid(token string) bool {
 	if token == "" {
-		log.Println("No authentication token")
+		log.Println("No authentication token provided")
 		return false
 	}
 
